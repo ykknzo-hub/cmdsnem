@@ -1,5 +1,4 @@
--- Combined NEMESIS Template UI + SHMOST Server Finder Script (Manual Join)
--- Matches AntiVCB style
+-- NEMESIS Server Browser (All servers + ping + join)
 local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -9,12 +8,11 @@ local HttpService = game:GetService("HttpService")
 local LocalPlayer = Players.LocalPlayer
 local pg = LocalPlayer:WaitForChild("PlayerGui")
 
--- Prevent duplicate UI instances
 local existing = pg:FindFirstChild("ShmostGui")
 if existing then existing:Destroy() end
 
 --------------------------------------------------------------------------------
--- UI THEME & SIZING CONFIGURATION (exact same as AntiVCB)
+-- THEME
 --------------------------------------------------------------------------------
 local THEME = {
 	Background   = Color3.fromRGB(15, 15, 15),
@@ -25,42 +23,36 @@ local THEME = {
 	TextMuted    = Color3.fromRGB(200, 200, 200),
 	ButtonIdle   = Color3.fromRGB(30, 30, 30),
 	ButtonHover  = Color3.fromRGB(50, 50, 50),
+	Success      = Color3.fromRGB(80, 200, 120),
 }
 
-local OPEN_SIZE        = UDim2.new(0, 280, 0, 280)
+local OPEN_SIZE        = UDim2.new(0, 340, 0, 420)
 local COLLAPSED_HEIGHT = 48
-local MIN_SIZE         = Vector2.new(240, 180)
-local MAX_SIZE         = Vector2.new(500, 480)
+local MIN_SIZE         = Vector2.new(280, 220)
+local MAX_SIZE         = Vector2.new(520, 560)
 local TWEEN_INFO       = TweenInfo.new(0.22, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
 local HOVER_TWEEN_INFO = TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
 --------------------------------------------------------------------------------
--- LOGO SETTINGS (same as AntiVCB)
+-- LOGO
 --------------------------------------------------------------------------------
-local LOGO_PATH          = "whitelogo.png"
-local LOGO_DOWNLOAD_URL  = "https://i.ibb.co/SwGkMS5h/whitelogo.png" -- ← paste a direct PNG link here
-local FALLBACK_LOGO      = "rbxassetid://107541043103322"
+local LOGO_PATH         = "whitelogo.png"
+local LOGO_DOWNLOAD_URL = "https://i.ibb.co/SwGkMS5h/whitelogo.png"
+local FALLBACK_LOGO     = "rbxassetid://107541043103322"
 
 local function getLogoImage()
 	if typeof(getcustomasset) == "function" then
 		if isfile and isfile(LOGO_PATH) then
 			local ok, asset = pcall(getcustomasset, LOGO_PATH)
-			if ok and asset then
-				return asset
-			end
+			if ok and asset then return asset end
 		end
-
 		if LOGO_DOWNLOAD_URL ~= "" and (not isfile or not isfile(LOGO_PATH)) then
-			local ok, data = pcall(function()
-				return game:HttpGet(LOGO_DOWNLOAD_URL)
-			end)
+			local ok, data = pcall(function() return game:HttpGet(LOGO_DOWNLOAD_URL) end)
 			if ok and type(data) == "string" and #data > 200 then
 				pcall(writefile, LOGO_PATH, data)
 				if isfile and isfile(LOGO_PATH) then
 					local ok2, asset = pcall(getcustomasset, LOGO_PATH)
-					if ok2 and asset then
-						return asset
-					end
+					if ok2 and asset then return asset end
 				end
 			end
 		end
@@ -69,7 +61,7 @@ local function getLogoImage()
 end
 
 --------------------------------------------------------------------------------
--- HELPER FUNCTIONS FOR UI STYLING
+-- HELPERS
 --------------------------------------------------------------------------------
 local function tween(instance, props, info)
 	local t = TweenService:Create(instance, info or TWEEN_INFO, props)
@@ -96,7 +88,7 @@ end
 local function makeButton(parent, props)
 	local btn = Instance.new("TextButton")
 	btn.Size = props.Size or UDim2.new(0, 24, 0, 24)
-	btn.BackgroundColor3 = THEME.ButtonIdle
+	btn.BackgroundColor3 = props.BackgroundColor3 or THEME.ButtonIdle
 	btn.BackgroundTransparency = 0.25
 	btn.AutoButtonColor = false
 	btn.Text = props.Text or ""
@@ -113,21 +105,14 @@ local function makeButton(parent, props)
 		tween(btnStroke, { Color = THEME.Accent, Transparency = 0 }, HOVER_TWEEN_INFO)
 	end)
 	btn.MouseLeave:Connect(function()
-		tween(btn, { BackgroundColor3 = THEME.ButtonIdle, BackgroundTransparency = 0.25 }, HOVER_TWEEN_INFO)
+		tween(btn, { BackgroundColor3 = props.BackgroundColor3 or THEME.ButtonIdle, BackgroundTransparency = 0.25 }, HOVER_TWEEN_INFO)
 		tween(btnStroke, { Color = THEME.Stroke, Transparency = 0.3 }, HOVER_TWEEN_INFO)
 	end)
-	btn.MouseButton1Down:Connect(function()
-		tween(btn, { Size = btn.Size - UDim2.new(0, 2, 0, 2) }, HOVER_TWEEN_INFO)
-	end)
-	btn.MouseButton1Up:Connect(function()
-		tween(btn, { Size = props.Size or UDim2.new(0, 24, 0, 24) }, HOVER_TWEEN_INFO)
-	end)
-
 	return btn
 end
 
 --------------------------------------------------------------------------------
--- UI CONSTRUCTION
+-- UI
 --------------------------------------------------------------------------------
 local gui = Instance.new("ScreenGui")
 gui.Name = "ShmostGui"
@@ -139,7 +124,7 @@ gui.Parent = pg
 local frame = Instance.new("Frame")
 frame.Name = "Main"
 frame.Size = OPEN_SIZE
-frame.Position = UDim2.new(0.5, -140, 0.5, -140)
+frame.Position = UDim2.new(0.5, -170, 0.5, -210)
 frame.BackgroundColor3 = THEME.Background
 frame.BackgroundTransparency = 0.15
 frame.BorderSizePixel = 0
@@ -147,7 +132,6 @@ frame.ClipsDescendants = true
 frame.Parent = gui
 corner(frame, UDim.new(0, 16))
 local frameStroke = stroke(frame, THEME.Stroke, 1.2)
-frameStroke.LineJoinMode = Enum.LineJoinMode.Round
 frameStroke.Transparency = 0.15
 
 local gradient = Instance.new("UIGradient")
@@ -175,9 +159,9 @@ corner(logo, UDim.new(0, 8))
 
 local title = Instance.new("TextLabel")
 title.BackgroundTransparency = 1
-title.Size = UDim2.new(0, 180, 0, 22)
+title.Size = UDim2.new(0, 200, 0, 22)
 title.Position = UDim2.new(0, 46, 0.5, -11)
-title.Text = "NEMESIS Server-Hop"
+title.Text = "NEMESIS ServerHopper"
 title.Font = Enum.Font.GothamBold
 title.TextSize = 14
 title.TextColor3 = THEME.TextPrimary
@@ -187,11 +171,7 @@ title.Parent = titleBar
 local minBtn = makeButton(titleBar, { Text = "–", Size = UDim2.new(0, 24, 0, 24) })
 minBtn.Position = UDim2.new(1, -58, 0, 12)
 
-local closeBtn = makeButton(titleBar, {
-	Text = "×",
-	Size = UDim2.new(0, 24, 0, 24),
-	TextColor3 = THEME.TextPrimary
-})
+local closeBtn = makeButton(titleBar, { Text = "×", Size = UDim2.new(0, 24, 0, 24) })
 closeBtn.Position = UDim2.new(1, -30, 0, 12)
 closeBtn.TextSize = 16
 
@@ -202,12 +182,36 @@ divider.Size = UDim2.new(1, -24, 0, 1)
 divider.Position = UDim2.new(0, 12, 0, 48)
 divider.Parent = frame
 
+-- Top controls
+local topBar = Instance.new("Frame")
+topBar.Size = UDim2.new(1, -24, 0, 36)
+topBar.Position = UDim2.new(0, 12, 0, 56)
+topBar.BackgroundTransparency = 1
+topBar.Parent = frame
+
+local RefreshBtn = makeButton(topBar, {
+	Text = "Refresh Servers",
+	Size = UDim2.new(1, 0, 0, 32),
+})
+
+local StatusText = Instance.new("TextLabel")
+StatusText.Size = UDim2.new(1, -24, 0, 18)
+StatusText.Position = UDim2.new(0, 12, 0, 96)
+StatusText.BackgroundTransparency = 1
+StatusText.Text = "Press Refresh to load servers."
+StatusText.TextColor3 = THEME.TextMuted
+StatusText.TextSize = 11
+StatusText.Font = Enum.Font.Gotham
+StatusText.TextXAlignment = Enum.TextXAlignment.Left
+StatusText.Parent = frame
+
+-- Server list
 local content = Instance.new("ScrollingFrame")
 content.Name = "Content"
 content.BackgroundTransparency = 1
 content.BorderSizePixel = 0
-content.Position = UDim2.new(0, 12, 0, 58)
-content.Size = UDim2.new(1, -24, 1, -70)
+content.Position = UDim2.new(0, 12, 0, 118)
+content.Size = UDim2.new(1, -24, 1, -130)
 content.ScrollBarThickness = 3
 content.ScrollBarImageColor3 = THEME.Accent
 content.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -215,72 +219,12 @@ content.AutomaticCanvasSize = Enum.AutomaticSize.Y
 content.Parent = frame
 
 local listLayout = Instance.new("UIListLayout")
-listLayout.Padding = UDim.new(0, 8)
+listLayout.Padding = UDim.new(0, 6)
 listLayout.SortOrder = Enum.SortOrder.LayoutOrder
 listLayout.Parent = content
 
 --------------------------------------------------------------------------------
--- INTEGRATED DYNAMIC SHMOST UI ELEMENTS
---------------------------------------------------------------------------------
-local StatusText = Instance.new("TextLabel")
-StatusText.Name = "StatusText"
-StatusText.Size = UDim2.new(1, 0, 0, 36)
-StatusText.BackgroundTransparency = 1
-StatusText.Text = "Ready. Press the button below to search for a server."
-StatusText.TextColor3 = THEME.TextPrimary
-StatusText.TextSize = 12
-StatusText.Font = Enum.Font.Gotham
-StatusText.TextWrapped = true
-StatusText.TextXAlignment = Enum.TextXAlignment.Left
-StatusText.Parent = content
-
-local StatsText = Instance.new("TextLabel")
-StatsText.Name = "StatsText"
-StatsText.Size = UDim2.new(1, 0, 0, 18)
-StatsText.BackgroundTransparency = 1
-StatsText.Text = "Servers analyzed: 0 | Highest found: 0 players"
-StatsText.TextColor3 = THEME.TextMuted
-StatsText.TextSize = 11
-StatsText.Font = Enum.Font.Gotham
-StatsText.TextXAlignment = Enum.TextXAlignment.Left
-StatsText.Parent = content
-
--- Progress Bar Elements
-local ProgressContainer = Instance.new("Frame")
-ProgressContainer.Name = "ProgressContainer"
-ProgressContainer.Size = UDim2.new(1, 0, 0, 8)
-ProgressContainer.BackgroundColor3 = THEME.Stroke
-ProgressContainer.BackgroundTransparency = 0.5
-ProgressContainer.BorderSizePixel = 0
-ProgressContainer.Parent = content
-corner(ProgressContainer, UDim.new(1, 0))
-
-local ProgressBar = Instance.new("Frame")
-ProgressBar.Name = "ProgressBar"
-ProgressBar.Size = UDim2.new(0, 0, 1, 0)
-ProgressBar.BackgroundColor3 = THEME.Accent
-ProgressBar.BorderSizePixel = 0
-ProgressBar.Parent = ProgressContainer
-corner(ProgressBar, UDim.new(1, 0))
-
-local ProgressGlow = Instance.new("Frame")
-ProgressGlow.Name = "ProgressGlow"
-ProgressGlow.Size = UDim2.new(1, 4, 1, 4)
-ProgressGlow.Position = UDim2.new(0, -2, 0, -2)
-ProgressGlow.BackgroundColor3 = THEME.Accent
-ProgressGlow.BackgroundTransparency = 0.7
-ProgressGlow.BorderSizePixel = 0
-ProgressGlow.Parent = ProgressBar
-corner(ProgressGlow, UDim.new(1, 0))
-
--- Action Button
-local ActionButton = makeButton(content, {
-	Text = "Find Highest Server",
-	Size = UDim2.new(1, 0, 0, 32)
-})
-
---------------------------------------------------------------------------------
--- RESIZE HANDLE & WINDOW CONTROLS
+-- RESIZE + WINDOW CONTROLS
 --------------------------------------------------------------------------------
 local resizeHandle = Instance.new("Frame")
 resizeHandle.Name = "ResizeHandle"
@@ -313,10 +257,8 @@ resizeCursor.AutoButtonColor = false
 resizeCursor.Parent = resizeHandle
 
 closeBtn.MouseButton1Click:Connect(function()
-	local t = tween(frame, { Size = UDim2.new(0, 280, 0, 0), BackgroundTransparency = 1 })
-	t.Completed:Connect(function()
-		gui:Destroy()
-	end)
+	local t = tween(frame, { Size = UDim2.new(0, frame.Size.X.Offset, 0, 0), BackgroundTransparency = 1 })
+	t.Completed:Connect(function() gui:Destroy() end)
 end)
 
 local minimized = false
@@ -327,6 +269,8 @@ minBtn.MouseButton1Click:Connect(function()
 		expandedSize = frame.Size
 		content.Visible = false
 		divider.Visible = false
+		topBar.Visible = false
+		StatusText.Visible = false
 		resizeHandle.Visible = false
 		tween(frame, { Size = UDim2.new(expandedSize.X.Scale, expandedSize.X.Offset, 0, COLLAPSED_HEIGHT) })
 		minBtn.Text = "+"
@@ -335,24 +279,20 @@ minBtn.MouseButton1Click:Connect(function()
 		task.delay(TWEEN_INFO.Time, function()
 			content.Visible = true
 			divider.Visible = true
+			topBar.Visible = true
+			StatusText.Visible = true
 			resizeHandle.Visible = true
 		end)
 		minBtn.Text = "–"
 	end
 end)
 
--- Window Dragging
-local dragging = false
-local dragInput, dragStart, startPos
-
+-- Drag
+local dragging, dragInput, dragStart, startPos
 local function updateDrag(input)
 	local delta = input.Position - dragStart
-	frame.Position = UDim2.new(
-		startPos.X.Scale, startPos.X.Offset + delta.X,
-		startPos.Y.Scale, startPos.Y.Offset + delta.Y
-	)
+	frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
 end
-
 titleBar.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 		dragging = true
@@ -363,21 +303,17 @@ titleBar.InputBegan:Connect(function(input)
 		end)
 	end
 end)
-
 titleBar.InputChanged:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
 		dragInput = input
 	end
 end)
-
 UIS.InputChanged:Connect(function(input)
 	if dragging and input == dragInput then updateDrag(input) end
 end)
 
--- Window Resizing
-local resizing = false
-local resizeInput, resizeStart, sizeStart
-
+-- Resize
+local resizing, resizeInput, resizeStart, sizeStart
 local function updateResize(input)
 	local delta = input.Position - resizeStart
 	local newWidth = math.clamp(sizeStart.X.Offset + delta.X, MIN_SIZE.X, MAX_SIZE.X)
@@ -385,7 +321,6 @@ local function updateResize(input)
 	frame.Size = UDim2.new(sizeStart.X.Scale, newWidth, sizeStart.Y.Scale, newHeight)
 	expandedSize = frame.Size
 end
-
 resizeCursor.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 		resizing = true
@@ -396,115 +331,131 @@ resizeCursor.InputBegan:Connect(function(input)
 		end)
 	end
 end)
-
 resizeCursor.InputChanged:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
 		resizeInput = input
 	end
 end)
-
 UIS.InputChanged:Connect(function(input)
 	if resizing and input == resizeInput then updateResize(input) end
 end)
 
-resizeCursor.MouseEnter:Connect(function()
-	for _, dot in ipairs(resizeHandle:GetChildren()) do
-		if dot:IsA("Frame") then
-			tween(dot, { BackgroundColor3 = THEME.Accent, BackgroundTransparency = 0 }, HOVER_TWEEN_INFO)
-		end
-	end
-end)
-
-resizeCursor.MouseLeave:Connect(function()
-	for _, dot in ipairs(resizeHandle:GetChildren()) do
-		if dot:IsA("Frame") then
-			tween(dot, { BackgroundColor3 = THEME.Stroke, BackgroundTransparency = 0.2 }, HOVER_TWEEN_INFO)
-		end
-	end
-end)
-
 --------------------------------------------------------------------------------
--- EXACT SHMOST CONFIGURATION & LOGIC (MANUAL TRIGGER)
+-- SERVER FETCH + LIST
 --------------------------------------------------------------------------------
-local visitedServersFileName = "VisitedServers_" .. game.PlaceId .. ".json"
-local minimumAcceptablePlayerCount = 8
-local maximumPreferredPlayerCount = math.floor(Players.MaxPlayers * 0.95)
-local minimumSpaceRequired = 1
-local maxRetries = 15
+local isLoading = false
 local maxServerPages = 8
-local serverBlacklist = {}
 
-local ANIMATION_SPEED = 0.6
-local EASE_STYLE = Enum.EasingStyle.Quart
-local EASE_DIRECTION = Enum.EasingDirection.Out
-
-local failedTeleports = {}
-local targetServerFound = nil
-local retryCount = 0
-local isSearching = false
-
-local function AnimateStatus(message, progress)
-	local textFade = TweenService:Create(StatusText, TweenInfo.new(0.2, EASE_STYLE, EASE_DIRECTION), {TextTransparency = 0.8})
-	textFade:Play()
-	textFade.Completed:Connect(function()
-		StatusText.Text = message
-		TweenService:Create(StatusText, TweenInfo.new(0.2, EASE_STYLE, EASE_DIRECTION), {TextTransparency = 0}):Play()
-	end)
-
-	local progressTween = TweenService:Create(ProgressBar, TweenInfo.new(ANIMATION_SPEED, EASE_STYLE, EASE_DIRECTION), {
-		Size = UDim2.new(math.max(0.02, progress), 0, 1, 0)
-	})
-	progressTween:Play()
-
-	local glowIntensity = 0.9 - (progress * 0.2)
-	TweenService:Create(ProgressGlow, TweenInfo.new(ANIMATION_SPEED, EASE_STYLE, EASE_DIRECTION), {
-		BackgroundTransparency = glowIntensity
-	}):Play()
-end
-
-local function AnimateStats(serversChecked, highestPlayerCount)
-	local statsFade = TweenService:Create(StatsText, TweenInfo.new(0.15, EASE_STYLE, EASE_DIRECTION), {TextTransparency = 0.6})
-	statsFade:Play()
-	statsFade.Completed:Connect(function()
-		StatsText.Text = "Servers analyzed: " .. serversChecked .. " | Highest found: " .. highestPlayerCount .. " players"
-		TweenService:Create(StatsText, TweenInfo.new(0.15, EASE_STYLE, EASE_DIRECTION), {TextTransparency = 0}):Play()
-	end)
-end
-
-local function LoadVisitedServers()
-	local success, result = pcall(function()
-		if not isfolder("ServerHistory") then
-			makefolder("ServerHistory")
-		end
-		local filePath = "ServerHistory/" .. visitedServersFileName
-		if isfile(filePath) then
-			return HttpService:JSONDecode(readfile(filePath))
-		else
-			return {}
-		end
-	end)
-	return success and result or {}
-end
-
-local function SaveVisitedServers(visitedServers)
-	pcall(function()
-		if not isfolder("ServerHistory") then
-			makefolder("ServerHistory")
-		end
-		local filePath = "ServerHistory/" .. visitedServersFileName
-		writefile(filePath, HttpService:JSONEncode(visitedServers))
-	end)
-end
-
-local function AddCurrentServerToVisited(visitedServers)
-	local currentServerGuid = game.JobId
-	if currentServerGuid ~= "" then
-		visitedServers[currentServerGuid] = {
-			timestamp = os.time(),
-			playerCount = #Players:GetPlayers()
-		}
-		SaveVisitedServers(visitedServers)
+-- Roblox does not give country per public server. Show placeholder.
+local function regionLabel(server)
+	-- Some rare payloads may include region-like fields; usually nil
+	local r = server.region or server.location or server.country
+	if type(r) == "string" and r ~= "" then
+		return r
 	end
+	return "—"
+end
+
+local function clearList()
+	for _, child in ipairs(content:GetChildren()) do
+		if child:IsA("Frame") then
+			child:Destroy()
+		end
+	end
+end
+
+local function createServerRow(server, index)
+	local playing = server.playing or 0
+	local maxP = server.maxPlayers or Players.MaxPlayers
+	local ping = server.ping
+	local pingText = (typeof(ping) == "number") and (math.floor(ping) .. " ms") or "N/A"
+	local region = regionLabel(server)
+
+	local row = Instance.new("Frame")
+	row.Size = UDim2.new(1, 0, 0, 52)
+	row.BackgroundColor3 = THEME.Panel
+	row.BackgroundTransparency = 0.15
+	row.BorderSizePixel = 0
+	row.LayoutOrder = index
+	row.Parent = content
+	corner(row, UDim.new(0, 10))
+	stroke(row, THEME.Stroke, 1).Transparency = 0.4
+
+	-- Flag / region placeholder
+	local flagLbl = Instance.new("TextLabel")
+	flagLbl.Size = UDim2.new(0, 36, 1, 0)
+	flagLbl.Position = UDim2.new(0, 8, 0, 0)
+	flagLbl.BackgroundTransparency = 1
+	flagLbl.Text = "🌐"
+	flagLbl.TextSize = 16
+	flagLbl.Font = Enum.Font.Gotham
+	flagLbl.TextColor3 = THEME.TextPrimary
+	flagLbl.Parent = row
+
+	local regionLbl = Instance.new("TextLabel")
+	regionLbl.Size = UDim2.new(0, 40, 0, 14)
+	regionLbl.Position = UDim2.new(0, 6, 1, -16)
+	regionLbl.BackgroundTransparency = 1
+	regionLbl.Text = region
+	regionLbl.TextSize = 9
+	regionLbl.Font = Enum.Font.Gotham
+	regionLbl.TextColor3 = THEME.TextMuted
+	regionLbl.TextXAlignment = Enum.TextXAlignment.Center
+	regionLbl.Parent = row
+
+	-- Players
+	local playersLbl = Instance.new("TextLabel")
+	playersLbl.Size = UDim2.new(0, 90, 0, 18)
+	playersLbl.Position = UDim2.new(0, 50, 0, 8)
+	playersLbl.BackgroundTransparency = 1
+	playersLbl.Text = playing .. " / " .. maxP .. " players"
+	playersLbl.Font = Enum.Font.GothamBold
+	playersLbl.TextSize = 12
+	playersLbl.TextColor3 = THEME.TextPrimary
+	playersLbl.TextXAlignment = Enum.TextXAlignment.Left
+	playersLbl.Parent = row
+
+	-- Ping
+	local pingLbl = Instance.new("TextLabel")
+	pingLbl.Size = UDim2.new(0, 90, 0, 16)
+	pingLbl.Position = UDim2.new(0, 50, 0, 28)
+	pingLbl.BackgroundTransparency = 1
+	pingLbl.Text = "Ping: " .. pingText
+	pingLbl.Font = Enum.Font.Gotham
+	pingLbl.TextSize = 11
+	pingLbl.TextColor3 = THEME.TextMuted
+	pingLbl.TextXAlignment = Enum.TextXAlignment.Left
+	pingLbl.Parent = row
+
+	-- Job id short
+	local idLbl = Instance.new("TextLabel")
+	idLbl.Size = UDim2.new(0, 100, 0, 14)
+	idLbl.Position = UDim2.new(0, 150, 0, 30)
+	idLbl.BackgroundTransparency = 1
+	idLbl.Text = string.sub(tostring(server.id or ""), 1, 8) .. "..."
+	idLbl.Font = Enum.Font.Gotham
+	idLbl.TextSize = 10
+	idLbl.TextColor3 = Color3.fromRGB(120, 120, 120)
+	idLbl.TextXAlignment = Enum.TextXAlignment.Left
+	idLbl.Parent = row
+
+	-- Join
+	local joinBtn = makeButton(row, {
+		Text = "Join",
+		Size = UDim2.new(0, 64, 0, 28),
+		TextColor3 = THEME.Success,
+	})
+	joinBtn.Position = UDim2.new(1, -74, 0.5, -14)
+
+	joinBtn.MouseButton1Click:Connect(function()
+		if not server.id then return end
+		StatusText.Text = "Joining server (" .. playing .. " players)..."
+		StatusText.TextColor3 = THEME.TextPrimary
+		joinBtn.Text = "..."
+		pcall(function()
+			TeleportService:TeleportToPlaceInstance(game.PlaceId, server.id, LocalPlayer)
+		end)
+	end)
 end
 
 local function GetAllServers()
@@ -527,20 +478,19 @@ local function GetAllServers()
 				return HttpService:JSONDecode(game:HttpGet(url))
 			end)
 			if not success then
-				task.wait(retryAttempt * 0.5)
+				task.wait(retryAttempt * 0.4)
 			end
 		until success or retryAttempt >= maxRetryAttempts
 
 		if success and result and result.data then
 			for _, server in ipairs(result.data) do
-				if server.id and server.playing and server.maxPlayers then
+				if server.id and server.id ~= game.JobId then
 					table.insert(allServers, server)
 				end
 			end
 			cursor = result.nextPageCursor or ""
 			pageCount = pageCount + 1
-			AnimateStatus("Fetching server data... Page " .. pageCount .. "/" .. maxServerPages, 0.1 + (pageCount / maxServerPages) * 0.3)
-			task.wait(0.1)
+			StatusText.Text = "Loading servers... page " .. pageCount
 		else
 			cursor = ""
 		end
@@ -549,188 +499,49 @@ local function GetAllServers()
 	return allServers
 end
 
-local function FindHighestPopulationServer(serverList, visitedServers, excludeServerIds)
-	excludeServerIds = excludeServerIds or {}
-	local bestServer = nil
-	local highestPlayerCount = 0
-	local serversChecked = 0
-	local candidates = {}
+local function RefreshServers()
+	if isLoading then return end
+	isLoading = true
+	RefreshBtn.Text = "Loading..."
+	StatusText.Text = "Fetching servers..."
+	StatusText.TextColor3 = THEME.TextMuted
+	clearList()
 
-	for _, server in pairs(serverList) do
-		serversChecked = serversChecked + 1
-		if excludeServerIds[server.id] or serverBlacklist[server.id] or server.id == game.JobId then
-			continue
-		end
+	task.spawn(function()
+		local servers = GetAllServers()
 
-		local playerCount = server.playing or 0
-		local maxPlayers = server.maxPlayers or Players.MaxPlayers
-		local spaceAvailable = maxPlayers - playerCount
-
-		if playerCount < minimumAcceptablePlayerCount or spaceAvailable < minimumSpaceRequired then
-			continue
-		end
-		if playerCount > maximumPreferredPlayerCount then
-			continue
-		end
-
-		if playerCount > highestPlayerCount then
-			highestPlayerCount = playerCount
-		end
-
-		local priority = playerCount * 100
-		if visitedServers[server.id] then
-			local timeAgo = os.time() - visitedServers[server.id].timestamp
-			if timeAgo < 1800 then
-				priority = priority - 500
-			elseif timeAgo < 3600 then
-				priority = priority - 200
-			end
-		else
-			priority = priority + 100
-		end
-
-		local idealOccupancy = maxPlayers * 0.7
-		if math.abs(playerCount - idealOccupancy) < maxPlayers * 0.2 then
-			priority = priority + 50
-		end
-
-		table.insert(candidates, {
-			server = server,
-			priority = priority,
-			playerCount = playerCount
-		})
-
-		if serversChecked % 20 == 0 then
-			AnimateStats(serversChecked, highestPlayerCount)
-		end
-	end
-
-	table.sort(candidates, function(a, b)
-		return a.priority > b.priority
-	end)
-
-	if #candidates > 0 then
-		bestServer = candidates[1].server
-		AnimateStats(serversChecked, highestPlayerCount)
-		return bestServer, candidates[1].priority, highestPlayerCount
-	end
-
-	AnimateStats(serversChecked, highestPlayerCount)
-	return nil, 0, highestPlayerCount
-end
-
-local function SearchForHighestPopulationServer()
-	if isSearching then return end
-	isSearching = true
-	targetServerFound = nil
-	ActionButton.Text = "Searching..."
-	AnimateStatus("Initializing server search...", 0.05)
-
-	local visitedServers = LoadVisitedServers()
-	AddCurrentServerToVisited(visitedServers)
-
-	AnimateStatus("Fetching server list...", 0.1)
-	local allServers = GetAllServers()
-
-	if #allServers == 0 then
-		AnimateStatus("No servers available. Please try again later.", 1)
-		ActionButton.Text = "Find Highest Server"
-		isSearching = false
-		return
-	end
-
-	AnimateStatus("Analyzing " .. #allServers .. " servers for highest population...", 0.4)
-	local targetServer, serverPriority, highestFound = FindHighestPopulationServer(allServers, visitedServers, failedTeleports)
-
-	local attempts = 0
-	while not targetServer and attempts < 3 do
-		attempts = attempts + 1
-		AnimateStatus("Expanding search criteria... (Attempt " .. attempts .. "/3)", 0.6)
-
-		if attempts >= 2 then
-			visitedServers = {}
-		end
-
-		local originalMin = minimumAcceptablePlayerCount
-		minimumAcceptablePlayerCount = math.max(1, minimumAcceptablePlayerCount - (attempts * 3))
-		targetServer, serverPriority, highestFound = FindHighestPopulationServer(allServers, visitedServers, failedTeleports)
-		minimumAcceptablePlayerCount = originalMin
-	end
-
-	if targetServer then
-		local playerCount = targetServer.playing
-		local spaceAvailable = (targetServer.maxPlayers or Players.MaxPlayers) - playerCount
-		targetServerFound = targetServer
-		AnimateStatus("Found optimal server: " .. playerCount .. " players (" .. spaceAvailable .. " slots free). Press 'Join Server'!", 1)
-		ActionButton.Text = "Join Server"
-	else
-		AnimateStatus("No suitable high-population servers found at this time.", 1)
-		ActionButton.Text = "Find Highest Server"
-	end
-
-	isSearching = false
-end
-
-local function JoinFoundServer()
-	if not targetServerFound then return end
-	AnimateStatus("Joining high population server...", 1)
-	ActionButton.Text = "Teleporting..."
-
-	local teleportSuccess, teleportError = pcall(function()
-		TeleportService:TeleportToPlaceInstance(game.PlaceId, targetServerFound.id, LocalPlayer)
-	end)
-
-	if not teleportSuccess and retryCount < maxRetries then
-		retryCount = retryCount + 1
-		failedTeleports[targetServerFound.id] = true
-		targetServerFound = nil
-		AnimateStatus("Connection failed. Finding new server...", 0.5)
-		task.spawn(function()
-			task.wait(1)
-			SearchForHighestPopulationServer()
+		-- Sort: highest players first, then lower ping
+		table.sort(servers, function(a, b)
+			local pa, pb = a.playing or 0, b.playing or 0
+			if pa ~= pb then return pa > pb end
+			local pina = (typeof(a.ping) == "number") and a.ping or 9999
+			local pinb = (typeof(b.ping) == "number") and b.ping or 9999
+			return pina < pinb
 		end)
-	end
+
+		clearList()
+		for i, server in ipairs(servers) do
+			createServerRow(server, i)
+		end
+
+		StatusText.Text = #servers .. " servers found (region not provided by Roblox API)"
+		StatusText.TextColor3 = THEME.TextMuted
+		RefreshBtn.Text = "Refresh Servers"
+		isLoading = false
+	end)
 end
 
-TeleportService.TeleportInitFailed:Connect(function(player, teleportResult, errorMessage)
+RefreshBtn.MouseButton1Click:Connect(RefreshServers)
+
+TeleportService.TeleportInitFailed:Connect(function(player, teleportResult)
 	if player == LocalPlayer then
-		local failReason = teleportResult.Name
-		if failReason == "GameEnded" or failReason == "GameFull" or failReason == "Unauthorized" then
-			if retryCount < maxRetries then
-				retryCount = retryCount + 1
-				AnimateStatus("Server unavailable. Finding alternative... (Attempt " .. retryCount .. "/" .. maxRetries .. ")", 0.4)
-				if targetServerFound and targetServerFound.id then
-					failedTeleports[targetServerFound.id] = true
-				end
-				targetServerFound = nil
-				task.spawn(function()
-					task.wait(1)
-					SearchForHighestPopulationServer()
-				end)
-			else
-				AnimateStatus("Unable to find available server after " .. maxRetries .. " attempts.", 1)
-				ActionButton.Text = "Find Highest Server"
-			end
-		else
-			AnimateStatus("Teleport failed: " .. failReason, 1)
-			ActionButton.Text = "Find Highest Server"
-		end
-	end
-end)
-
-ActionButton.MouseButton1Click:Connect(function()
-	if isSearching then return end
-	if targetServerFound then
-		JoinFoundServer()
-	else
-		retryCount = 0
-		failedTeleports = {}
-		task.spawn(SearchForHighestPopulationServer)
+		StatusText.Text = "Join failed: " .. tostring(teleportResult)
+		StatusText.TextColor3 = Color3.fromRGB(255, 100, 100)
 	end
 end)
 
 --------------------------------------------------------------------------------
--- INITIALIZATION & ANIMATION OPENING
+-- OPEN ANIMATION
 --------------------------------------------------------------------------------
-frame.Size = UDim2.new(0, 280, 0, 0)
+frame.Size = UDim2.new(0, OPEN_SIZE.X.Offset, 0, 0)
 tween(frame, { Size = OPEN_SIZE })
