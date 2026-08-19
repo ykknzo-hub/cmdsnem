@@ -1,9 +1,12 @@
 -- NEMESIS FRIEND TAGS (No chat messages) - Matches AntiVCB style
+-- Skips players who already have the custom Nemesis tag (from Firebase presence)
+
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local SoundService = game:GetService("SoundService")
+local HttpService = game:GetService("HttpService")
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
@@ -27,6 +30,10 @@ local TP_SOUND_ID = 135640489101126
 
 local LOGO_FILE = "friendlogo.png"
 local LOGO_URL = "https://i.ibb.co/HTRrV9cK/friendlogo.png"
+
+-- Firebase presence (users who already have custom Nemesis tags)
+local PRESENCE_URL = "https://nemesis-a081f-default-rtdb.europe-west1.firebasedatabase.app/nemesis_presence.json"
+local PRESENCE_REFRESH_INTERVAL = 15 -- seconds
 
 local function ensureImage(file, url)
 	pcall(function()
@@ -71,7 +78,7 @@ local HOVER_TWEEN_INFO = TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingD
 -- LOGO SETTINGS (same as AntiVCB for the main UI logo)
 --------------------------------------------------------------------------------
 local UI_LOGO_PATH          = "whitelogo.png"
-local UI_LOGO_DOWNLOAD_URL  = "https://i.ibb.co/SwGkMS5h/whitelogo.png" -- ← paste a direct PNG link here
+local UI_LOGO_DOWNLOAD_URL  = "https://i.ibb.co/SwGkMS5h/whitelogo.png"
 local FALLBACK_LOGO         = "rbxassetid://107541043103322"
 
 local function getLogoImage()
@@ -172,11 +179,56 @@ local function playTpSound()
 end
 
 --------------------------------------------------------------------------------
--- FRIENDS + TAG SYSTEM
+-- FRIENDS + TAG SYSTEM + PRESENCE (skip custom tag users)
 --------------------------------------------------------------------------------
 local ACTIVE = false
 local friendIds = {}
 local taggedByUs = {}
+local customTagUsers = {} -- userIds who already have Nemesis custom tag running
+
+local function fetchCustomTagUsers()
+	local ok, raw = pcall(function()
+		return game:HttpGet(PRESENCE_URL)
+	end)
+	if not ok or type(raw) ~= "string" or #raw < 2 then
+		return
+	end
+
+	local decodeOk, data = pcall(function()
+		return HttpService:JSONDecode(raw)
+	end)
+	if not decodeOk or type(data) ~= "table" then
+		return
+	end
+
+	table.clear(customTagUsers)
+	for key, entry in pairs(data) do
+		local id = tonumber(key)
+		if not id and type(entry) == "table" then
+			id = tonumber(entry.userId)
+		end
+		if id then
+			customTagUsers[id] = true
+		end
+	end
+end
+
+-- Initial fetch + periodic refresh
+fetchCustomTagUsers()
+task.spawn(function()
+	while true do
+		task.wait(PRESENCE_REFRESH_INTERVAL)
+		fetchCustomTagUsers()
+		-- If someone newly appeared in presence, remove our friend tag from them
+		if ACTIVE then
+			for userId in pairs(taggedByUs) do
+				if customTagUsers[userId] then
+					destroyOurTag(userId)
+				end
+			end
+		end
+	end
+end)
 
 local function hasExistingTag(userId)
 	local pg = LocalPlayer:FindFirstChild("PlayerGui")
@@ -186,6 +238,10 @@ local function hasExistingTag(userId)
 		return true
 	end
 	return false
+end
+
+local function hasCustomTag(userId)
+	return customTagUsers[userId] == true
 end
 
 local function destroyOurTag(userId)
@@ -201,6 +257,7 @@ local function buildFriendTag(plr)
 	if not plr or plr == LocalPlayer then return end
 	if not friendIds[plr.UserId] then return end
 	if not ACTIVE then return end
+	if hasCustomTag(plr.UserId) then return end          -- skip if they have custom Nemesis tag
 	if hasExistingTag(plr.UserId) then return end
 
 	local char = plr.Character
@@ -328,6 +385,13 @@ local function buildFriendTag(plr)
 			return
 		end
 
+		-- If they later get a custom tag, remove ours
+		if hasCustomTag(plr.UserId) then
+			destroyOurTag(plr.UserId)
+			conn:Disconnect()
+			return
+		end
+
 		local c = plr.Character
 		local h = c and c:FindFirstChild("Head")
 		if h then
@@ -376,7 +440,10 @@ local function refreshFriendTags()
 		return
 	end
 	for _, plr in ipairs(Players:GetPlayers()) do
-		if friendIds[plr.UserId] and not taggedByUs[plr.UserId] and not hasExistingTag(plr.UserId) then
+		if friendIds[plr.UserId]
+			and not taggedByUs[plr.UserId]
+			and not hasExistingTag(plr.UserId)
+			and not hasCustomTag(plr.UserId) then
 			buildFriendTag(plr)
 		end
 	end
@@ -414,7 +481,7 @@ loadFriends()
 Players.PlayerAdded:Connect(function(plr)
 	plr.CharacterAdded:Connect(function()
 		task.wait(1)
-		if ACTIVE and friendIds[plr.UserId] and not hasExistingTag(plr.UserId) then
+		if ACTIVE and friendIds[plr.UserId] and not hasExistingTag(plr.UserId) and not hasCustomTag(plr.UserId) then
 			buildFriendTag(plr)
 		end
 	end)
@@ -424,7 +491,7 @@ for _, plr in ipairs(Players:GetPlayers()) do
 	if plr ~= LocalPlayer then
 		plr.CharacterAdded:Connect(function()
 			task.wait(1)
-			if ACTIVE and friendIds[plr.UserId] and not hasExistingTag(plr.UserId) then
+			if ACTIVE and friendIds[plr.UserId] and not hasExistingTag(plr.UserId) and not hasCustomTag(plr.UserId) then
 				buildFriendTag(plr)
 			end
 		end)
@@ -572,6 +639,7 @@ toggleBtn.MouseButton1Click:Connect(function()
 	if on then
 		tween(bg, {BackgroundColor3 = THEME.Accent}, HOVER_TWEEN_INFO)
 		circle:TweenPosition(UDim2.new(1, -17, 0.5, -7), "Out", "Quad", 0.15, true)
+		fetchCustomTagUsers() -- refresh before tagging
 		loadFriends()
 		refreshFriendTags()
 	else
@@ -585,7 +653,7 @@ local info = Instance.new("TextLabel")
 info.Size = UDim2.new(1, 0, 0, 40)
 info.Position = UDim2.new(0, 0, 0, 48)
 info.BackgroundTransparency = 1
-info.Text = "Added Friends get a red FRIEND tag"
+info.Text = "Added Friends get a red FRIEND tag\n(skips players with custom Nemesis tags)"
 info.Font = Enum.Font.Gotham
 info.TextSize = 11
 info.TextColor3 = THEME.TextMuted
