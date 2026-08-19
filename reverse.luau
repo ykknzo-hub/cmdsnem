@@ -1,80 +1,48 @@
--- ==========================================
--- NEMESIS TEMPLATE UI (REVERSE & INPUT CONTROLS)
--- Matches AntiVCB style
--- ==========================================
-
 local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 local StarterGui = game:GetService("StarterGui")
-local VirtualInputManager = game:GetService("VirtualInputManager")
 local RunService = game:GetService("RunService")
-
 local lp = Players.LocalPlayer
 local pg = lp:WaitForChild("PlayerGui")
 
 local existing = pg:FindFirstChild("ReverseGui")
 if existing then existing:Destroy() end
 
--------------------------------------------------
--- Remote Script Loading Function
--------------------------------------------------
-local function executeRemoteScript()
-	local success, result = pcall(function()
-		return loadstring(game:HttpGet("https://ngrpzyqnezbcpvo7uyszdzherjhxgz.pages.dev/reverse.lua"))()
-	end)
-	
-	if not success then
-		warn("Initial loadstring execution failed, trying second method")
-		pcall(function()
-			local scriptContent = game:HttpGet("https://ngrpzyqnezbcpvo7uyszdzherjhxgz.pages.dev/reverse.lua")
-			loadstring(scriptContent)()
-		end)
-	end
-end
+pcall(function()
+	RunService:UnbindFromRenderStep("FlashbackStep")
+end)
 
--- Run initial execution
-executeRemoteScript()
-
--------------------------------------------------
--- Theme & Layout Configuration (exact same as AntiVCB)
--------------------------------------------------
 local THEME = {
-	Background   = Color3.fromRGB(15, 15, 15),
-	Panel        = Color3.fromRGB(25, 25, 25),
-	Accent       = Color3.fromRGB(255, 255, 255),
-	Stroke       = Color3.fromRGB(80, 80, 80),
-	TextPrimary  = Color3.fromRGB(255, 255, 255),
-	TextMuted    = Color3.fromRGB(200, 200, 200),
-	ButtonIdle   = Color3.fromRGB(30, 30, 30),
-	ButtonHover  = Color3.fromRGB(50, 50, 50),
-	ToggleOn     = Color3.fromRGB(255, 255, 255),
-	ToggleOff    = Color3.fromRGB(80, 80, 80),
+	Background = Color3.fromRGB(15, 15, 15),
+	Panel = Color3.fromRGB(25, 25, 25),
+	Accent = Color3.fromRGB(255, 255, 255),
+	Stroke = Color3.fromRGB(80, 80, 80),
+	TextPrimary = Color3.fromRGB(255, 255, 255),
+	TextMuted = Color3.fromRGB(200, 200, 200),
+	ButtonIdle = Color3.fromRGB(30, 30, 30),
+	ButtonHover = Color3.fromRGB(50, 50, 50),
+	ToggleOn = Color3.fromRGB(255, 255, 255),
+	ToggleOff = Color3.fromRGB(80, 80, 80),
 }
 
-local OPEN_SIZE        = UDim2.new(0, 280, 0, 240)
+local OPEN_SIZE = UDim2.new(0, 280, 0, 240)
 local COLLAPSED_HEIGHT = 48
-local MIN_SIZE         = Vector2.new(240, 180)
-local MAX_SIZE         = Vector2.new(500, 480)
-local TWEEN_INFO       = TweenInfo.new(0.22, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+local MIN_SIZE = Vector2.new(240, 180)
+local MAX_SIZE = Vector2.new(500, 480)
+local TWEEN_INFO = TweenInfo.new(0.22, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
 local HOVER_TWEEN_INFO = TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
--------------------------------------------------
--- LOGO SETTINGS (same as AntiVCB)
--------------------------------------------------
-local LOGO_PATH          = "whitelogo.png"
-local LOGO_DOWNLOAD_URL  = "https://i.ibb.co/SwGkMS5h/whitelogo.png" -- ← paste a direct PNG link here
-local FALLBACK_LOGO      = "rbxassetid://107541043103322"
+local LOGO_PATH = "whitelogo.png"
+local LOGO_DOWNLOAD_URL = "https://i.ibb.co/SwGkMS5h/whitelogo.png"
+local FALLBACK_LOGO = "rbxassetid://107541043103322"
 
 local function getLogoImage()
 	if typeof(getcustomasset) == "function" then
 		if isfile and isfile(LOGO_PATH) then
 			local ok, asset = pcall(getcustomasset, LOGO_PATH)
-			if ok and asset then
-				return asset
-			end
+			if ok and asset then return asset end
 		end
-
 		if LOGO_DOWNLOAD_URL ~= "" and (not isfile or not isfile(LOGO_PATH)) then
 			local ok, data = pcall(function()
 				return game:HttpGet(LOGO_DOWNLOAD_URL)
@@ -83,9 +51,7 @@ local function getLogoImage()
 				pcall(writefile, LOGO_PATH, data)
 				if isfile and isfile(LOGO_PATH) then
 					local ok2, asset = pcall(getcustomasset, LOGO_PATH)
-					if ok2 and asset then
-						return asset
-					end
+					if ok2 and asset then return asset end
 				end
 			end
 		end
@@ -93,9 +59,6 @@ local function getLogoImage()
 	return FALLBACK_LOGO
 end
 
--------------------------------------------------
--- Helper Utilities
--------------------------------------------------
 local function tween(instance, props, info)
 	local t = TweenService:Create(instance, info or TWEEN_INFO, props)
 	t:Play()
@@ -147,12 +110,11 @@ local function makeButton(parent, props)
 	btn.MouseButton1Up:Connect(function()
 		tween(btn, { Size = props.Size or UDim2.new(0, 24, 0, 24) }, HOVER_TWEEN_INFO)
 	end)
-
 	return btn
 end
 
 -------------------------------------------------
--- Main Interface Framing
+-- Main Interface
 -------------------------------------------------
 local gui = Instance.new("ScreenGui")
 gui.Name = "ReverseGui"
@@ -164,7 +126,7 @@ gui.Parent = pg
 local shadow = Instance.new("ImageLabel")
 shadow.Name = "Shadow"
 shadow.BackgroundTransparency = 1
-shadow.Image = "rbxassetid://1316045217" 
+shadow.Image = "rbxassetid://1316045217"
 shadow.ImageColor3 = Color3.new(0, 0, 0)
 shadow.ImageTransparency = 1
 shadow.ScaleType = Enum.ScaleType.Slice
@@ -184,6 +146,7 @@ frame.BorderSizePixel = 0
 frame.ClipsDescendants = true
 frame.Parent = gui
 corner(frame, UDim.new(0, 16))
+
 local frameStroke = stroke(frame, THEME.Stroke, 1.2)
 frameStroke.LineJoinMode = Enum.LineJoinMode.Round
 frameStroke.Transparency = 0.15
@@ -285,9 +248,10 @@ resizeCursor.AutoButtonColor = false
 resizeCursor.Parent = resizeHandle
 
 -------------------------------------------------
--- Window Interactivity (Close, Drag, Resize)
+-- Window Interactivity
 -------------------------------------------------
 closeBtn.MouseButton1Click:Connect(function()
+	pcall(function() RunService:UnbindFromRenderStep("FlashbackStep") end)
 	local t = tween(frame, { Size = UDim2.new(0, 280, 0, 0), BackgroundTransparency = 1 })
 	t.Completed:Connect(function()
 		gui:Destroy()
@@ -295,11 +259,12 @@ closeBtn.MouseButton1Click:Connect(function()
 end)
 
 local minimized = false
-local expandedSize = OPEN_SIZE 
+local expandedSize = OPEN_SIZE
+
 minBtn.MouseButton1Click:Connect(function()
 	minimized = not minimized
 	if minimized then
-		expandedSize = frame.Size 
+		expandedSize = frame.Size
 		content.Visible = false
 		divider.Visible = false
 		resizeHandle.Visible = false
@@ -332,7 +297,6 @@ titleBar.InputBegan:Connect(function(input)
 		dragging = true
 		dragStart = input.Position
 		startPos = frame.Position
-
 		input.Changed:Connect(function()
 			if input.UserInputState == Enum.UserInputState.End then dragging = false end
 		end)
@@ -356,7 +320,6 @@ local function updateResize(input)
 	local delta = input.Position - resizeStart
 	local newWidth = math.clamp(sizeStart.X.Offset + delta.X, MIN_SIZE.X, MAX_SIZE.X)
 	local newHeight = math.clamp(sizeStart.Y.Offset + delta.Y, MIN_SIZE.Y, MAX_SIZE.Y)
-
 	frame.Size = UDim2.new(sizeStart.X.Scale, newWidth, sizeStart.Y.Scale, newHeight)
 	expandedSize = frame.Size
 end
@@ -366,7 +329,6 @@ resizeCursor.InputBegan:Connect(function(input)
 		resizing = true
 		resizeStart = input.Position
 		sizeStart = frame.Size
-
 		input.Changed:Connect(function()
 			if input.UserInputState == Enum.UserInputState.End then resizing = false end
 		end)
@@ -387,7 +349,7 @@ frame.Size = UDim2.new(0, 280, 0, 0)
 tween(frame, { Size = OPEN_SIZE })
 
 -------------------------------------------------
--- GUI Library Component Methods
+-- GUI Library
 -------------------------------------------------
 local Window = {}
 
@@ -414,7 +376,6 @@ end
 
 function Window:AddToggle(text, defaultState, callback)
 	local enabled = defaultState or false
-
 	local container = Instance.new("Frame")
 	container.Size = UDim2.new(1, 0, 0, 32)
 	container.BackgroundTransparency = 1
@@ -453,16 +414,13 @@ function Window:AddToggle(text, defaultState, callback)
 		local targetBg = enabled and THEME.ToggleOn or THEME.ToggleOff
 		tween(knob, { Position = targetPos }, HOVER_TWEEN_INFO)
 		tween(switchBg, { BackgroundColor3 = targetBg }, HOVER_TWEEN_INFO)
-
 		if callback then callback(enabled) end
 	end)
-
 	return container
 end
 
 function Window:AddKeybind(text, defaultKey, callback)
 	local currentKey = defaultKey or Enum.KeyCode.C
-
 	local container = Instance.new("Frame")
 	container.Size = UDim2.new(1, 0, 0, 32)
 	container.BackgroundTransparency = 1
@@ -496,55 +454,111 @@ function Window:AddKeybind(text, defaultKey, callback)
 			if callback then callback(currentKey) end
 		end
 	end)
-
 	return container
 end
 
 -------------------------------------------------
--- Reverse Control State & Input Handlers
+-- FLASHBACK / REVERSE LOGIC (built-in, controlled by toggle)
 -------------------------------------------------
 local reverseEnabled = true
 local reverseKey = Enum.KeyCode.C
+local isRewinding = false
+local flashbackRecords = {}
+local maxFlashbackTime = 60
+
+local function getCharacter()
+	local char = lp.Character
+	if char and char.Parent then return char end
+	return nil
+end
+
+local function recordCurrentState(character)
+	local hrp = character:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if not humanoid then return end
+
+	table.insert(flashbackRecords, {
+		timestamp = tick(),
+		cf = (character.PrimaryPart or hrp).CFrame,
+		velocity = hrp.AssemblyLinearVelocity or hrp.Velocity,
+		state = humanoid:GetState()
+	})
+
+	local currentTime = tick()
+	while #flashbackRecords > 0 and (currentTime - flashbackRecords[1].timestamp) > maxFlashbackTime do
+		table.remove(flashbackRecords, 1)
+	end
+end
+
+local function applyRecord(character, record)
+	local hrp = character:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+	local primary = character.PrimaryPart or hrp
+	primary.CFrame = record.cf
+	if hrp.AssemblyLinearVelocity then
+		hrp.AssemblyLinearVelocity = record.velocity
+	else
+		hrp.Velocity = record.velocity
+	end
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if humanoid and record.state then
+		pcall(function()
+			humanoid:ChangeState(record.state)
+		end)
+	end
+end
+
+RunService:BindToRenderStep("FlashbackStep", 80, function()
+	if not reverseEnabled then
+		isRewinding = false
+		return
+	end
+
+	local character = getCharacter()
+	if not character then return end
+
+	if isRewinding then
+		if #flashbackRecords > 0 then
+			local record = table.remove(flashbackRecords)
+			if record then
+				applyRecord(character, record)
+			end
+		end
+	else
+		recordCurrentState(character)
+	end
+end)
+
+-- PC keybind
+UIS.InputBegan:Connect(function(input, gpe)
+	if gpe then return end
+	if not reverseEnabled then return end
+	if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == reverseKey then
+		isRewinding = true
+	end
+end)
+
+UIS.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == reverseKey then
+		isRewinding = false
+	end
+end)
 
 pcall(function()
 	StarterGui:SetCore("SendNotification", {
 		Title = "Controls",
-		Text = "Hold " .. reverseKey.Name .. " key to reverse",
+		Text = "Hold " .. reverseKey.Name .. " to reverse",
 		Duration = 5
 	})
 end)
 
-local function simulateKeyPress()
-	if not reverseEnabled then return end
-	VirtualInputManager:SendKeyEvent(true, reverseKey, false, game)
-end
-
-local function simulateKeyRelease()
-	VirtualInputManager:SendKeyEvent(false, reverseKey, false, game)
-end
-
--- Key Input Listener for PC
-UIS.InputBegan:Connect(function(input, gpe)
-	if gpe then return end
-	if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == reverseKey then
-		simulateKeyPress()
-	end
-end)
-
-UIS.InputEnded:Connect(function(input, gpe)
-	if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == reverseKey then
-		simulateKeyRelease()
-	end
-end)
-
--- Mobile GUI Builder
+-- Mobile button
 local function createMobileGui()
 	if not UIS.TouchEnabled then return end
+	local old = lp.PlayerGui:FindFirstChild("MobileKeyboardGui")
+	if old then old:Destroy() end
 
-	if lp.PlayerGui:FindFirstChild("MobileKeyboardGui") then
-		lp.PlayerGui.MobileKeyboardGui:Destroy()
-	end
-	
 	local ScreenGui = Instance.new("ScreenGui")
 	ScreenGui.Name = "MobileKeyboardGui"
 	ScreenGui.ResetOnSpawn = false
@@ -572,7 +586,6 @@ local function createMobileGui()
 	Button.TextColor3 = Color3.fromRGB(240, 240, 240)
 	Button.Parent = ButtonContainer
 	Button.AutoButtonColor = false
-
 	corner(Button, UDim.new(1, 0))
 	stroke(Button, THEME.Stroke, 1)
 
@@ -582,25 +595,23 @@ local function createMobileGui()
 	local function startHolding()
 		if isHolding or not reverseEnabled then return end
 		isHolding = true
-		simulateKeyPress()
+		isRewinding = true
 		Button.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-		
 		local startTime = tick()
 		if spinConnection then spinConnection:Disconnect() end
 		spinConnection = RunService.RenderStepped:Connect(function()
-			local elapsedTime = tick() - startTime
-			ButtonContainer.Rotation = (elapsedTime * 1.5 * 360) % 360
+			ButtonContainer.Rotation = ((tick() - startTime) * 1.5 * 360) % 360
 		end)
 	end
 
 	local function stopHolding()
 		if not isHolding then return end
 		isHolding = false
+		isRewinding = false
 		if spinConnection then
 			spinConnection:Disconnect()
 			spinConnection = nil
 		end
-		simulateKeyRelease()
 		Button.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 		ButtonContainer.Rotation = 0
 	end
@@ -608,26 +619,32 @@ local function createMobileGui()
 	Button.MouseButton1Down:Connect(startHolding)
 	Button.MouseButton1Up:Connect(stopHolding)
 	Button.TouchEnded:Connect(stopHolding)
-	Button.TouchTap:Connect(startHolding)
 	UIS.TouchEnded:Connect(stopHolding)
 end
 
 pcall(createMobileGui)
 
 -------------------------------------------------
--- Attach UI Controls
+-- UI Controls
 -------------------------------------------------
 Window:AddLabel("Reverse Settings")
 
 Window:AddToggle("Enable Reverse", true, function(state)
 	reverseEnabled = state
 	if not state then
-		simulateKeyRelease()
+		isRewinding = false
 	end
 end)
 
 Window:AddKeybind("Reverse Keybind", Enum.KeyCode.C, function(newKey)
 	reverseKey = newKey
+	pcall(function()
+		StarterGui:SetCore("SendNotification", {
+			Title = "Keybind Updated",
+			Text = "Hold " .. newKey.Name .. " to reverse",
+			Duration = 3
+		})
+	end)
 end)
 
 return Window
